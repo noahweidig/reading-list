@@ -74,8 +74,6 @@ body{background:var(--bg);color:var(--fg);
   font:16px/1.65 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
   transition:background .25s ease,color .25s ease}
-body::before{content:"";position:fixed;inset:0 0 auto 0;height:3px;
-  background:linear-gradient(90deg,var(--accent),transparent 70%);opacity:.85;pointer-events:none}
 .wrap{max-width:900px;margin:0 auto;padding:2.2rem 1.5rem 5rem}
 a{color:inherit;text-decoration:none}
 .ic{flex:none;vertical-align:-2px}
