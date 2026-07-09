@@ -2,7 +2,7 @@ name: Deploy site
 
 on:
   push:
-    branches: [claude/book-review-site-j7ybox]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
