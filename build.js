@@ -205,7 +205,7 @@ function bookPage(b) {
     [icons.user, 'Author', m.author],
     [m.format === 'audiobook' ? icons.headphones : icons.book, 'Format', m.format === 'audiobook' ? 'Audiobook' : 'Physical book'],
     [icons.mic, 'Narrated by', m.narrator],
-    [b.status === 'reading' ? icons.bookmark : icons.check, 'Status', b.status === 'reading' ? 'Currently reading' : 'Read'],
+    [b.status === 'reading' ? icons.bookmark : icons.check, 'Status', b.status === 'reading' ? 'Currently reading' : (m.date ? `Read in ${m.date}` : 'Read')],
   ].filter(r => r[2]).map(([ic, k, v]) => `<span class="chip">${ic}<span>${k} <b>${esc(v)}</b></span></span>`).join('');
   const thoughts = b.body.trim()
     ? `<div class="thoughts">${md(b.body)}</div>`
@@ -235,6 +235,20 @@ const section = (label, list) => list.length ? `<div class="section">
 const reading = books.filter(b => b.status === 'reading');
 const read = books.filter(b => b.status !== 'reading');
 
+// Group finished books by year read (date: 2026 — or comma-separated for re-reads: 2026, 2023).
+const byYear = new Map();
+for (const b of read) {
+  const years = (b.meta.date || '').split(',').map(s => s.trim()).filter(Boolean);
+  for (const y of years.length ? years : ['Earlier']) {
+    if (!byYear.has(y)) byYear.set(y, []);
+    byYear.get(y).push(b);
+  }
+}
+const yearSections = [...byYear.keys()]
+  .sort((a, b) => a === 'Earlier' ? 1 : b === 'Earlier' ? -1 : Number(b) - Number(a))
+  .map(y => section(y === 'Earlier' ? 'Read' : `Read in ${y}`, byYear.get(y)))
+  .join('');
+
 fs.writeFileSync(path.join(OUT, 'index.html'), page('Shelf · Reading Journal',
   `<span class="eyebrow">A reading journal</span><h1 class="site">Shelf</h1>
 <p class="tagline">Books I&rsquo;m reading, books I&rsquo;ve finished, and what I thought of them.</p>
@@ -243,7 +257,7 @@ fs.writeFileSync(path.join(OUT, 'index.html'), page('Shelf · Reading Journal',
 <span class="stat">${icons.check}<b>${read.length}</b> finished</span>
 <span class="stat">${icons.headphones}<b>${books.filter(b => b.meta.format === 'audiobook').length}</b> audiobooks</span>
 </div>
-${section('Currently Reading', reading)}${section('Read', read)}`));
+${section('Currently Reading', reading)}${yearSections}`));
 
 for (const b of books) fs.writeFileSync(path.join(OUT, `${b.slug}.html`), bookPage(b));
 console.log(`Built ${books.length} books -> dist/`);
