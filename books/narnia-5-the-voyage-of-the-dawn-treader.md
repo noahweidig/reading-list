@@ -5,4 +5,5 @@ author: C. S. Lewis
 status: read
 format: audiobook
 narrator: Derek Jacobi
+date: 2026
 ---
