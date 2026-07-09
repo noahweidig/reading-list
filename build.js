@@ -97,12 +97,7 @@ a{color:inherit;text-decoration:none}
   letter-spacing:.18em;text-transform:uppercase;color:var(--accent-fg)}
 .eyebrow::before{content:"";width:22px;height:2px;background:var(--accent);border-radius:2px}
 h1.site{font-size:clamp(2.4rem,6vw,3.4rem);font-weight:800;letter-spacing:-.035em;line-height:1.05;margin:.7rem 0 .8rem}
-.tagline{color:var(--fg2);font-size:1.08rem;max-width:34rem;margin-bottom:1.6rem}
-.stats{display:flex;flex-wrap:wrap;gap:.6rem;margin-bottom:3.6rem}
-.stat{display:inline-flex;align-items:center;gap:.5rem;font-size:.82rem;font-weight:600;color:var(--fg2);
-  background:var(--card);border:1px solid var(--line);border-radius:99px;padding:.38rem .85rem}
-.stat .ic{color:var(--accent-fg)}
-.stat b{color:var(--fg);font-weight:800}
+.tagline{color:var(--fg2);font-size:1.08rem;max-width:34rem;margin-bottom:3rem}
 
 /* sections + cards */
 .section{margin-top:3rem}
@@ -253,11 +248,6 @@ const yearSections = [...byYear.keys()]
 fs.writeFileSync(path.join(OUT, 'index.html'), page('Shelf · Reading Journal',
   `<span class="eyebrow">A reading journal</span><h1 class="site">Shelf</h1>
 <p class="tagline">Books I&rsquo;m reading, books I&rsquo;ve finished, and what I thought of them.</p>
-<div class="stats">
-<span class="stat">${icons.bookmark}<b>${reading.length}</b> in progress</span>
-<span class="stat">${icons.check}<b>${read.length}</b> finished</span>
-<span class="stat">${icons.headphones}<b>${books.filter(b => b.meta.format === 'audiobook').length}</b> audiobooks</span>
-</div>
 ${section('Currently Reading', reading)}${yearSections}`));
 
 for (const b of books) fs.writeFileSync(path.join(OUT, `${b.slug}.html`), bookPage(b));
