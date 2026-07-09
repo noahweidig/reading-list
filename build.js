@@ -180,7 +180,7 @@ const topbar = home => `<div class="top">
 
 const page = (title, body) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${esc(title)}</title>${themeScript}<style>${css}</style></head>
+<title>${esc(title)}</title><link rel="icon" href="favicon.svg" type="image/svg+xml">${themeScript}<style>${css}</style></head>
 <body><div class="wrap">${topbar()}${body}
 <footer><span>Built from markdown, one file per book</span><span>Shelf</span></footer></div>
 ${toggleScript}</body></html>`;
@@ -227,6 +227,7 @@ const books = fs.readdirSync(SRC).filter(f => f.endsWith('.md')).map(f => {
 
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
+fs.copyFileSync(path.join(__dirname, 'favicon.svg'), path.join(OUT, 'favicon.svg'));
 
 const section = (label, list) => list.length ? `<div class="section">
 <h2><span>${label}</span><span class="n">${list.length}</span></h2>
