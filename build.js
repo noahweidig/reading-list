@@ -61,7 +61,7 @@ const css = `
   --line:#dcd8d0;--line2:#cbc6bc;--card:#ffffff;
   --accent:#a05a1c;--accent-fg:#8a4b12;--accent-soft:rgba(160,90,28,.1);
   --green:#1a7f4b;--green-soft:rgba(26,127,75,.1);
-  --glass:rgba(255,255,255,.6);
+  --glass:rgba(255,255,255,.6);--glass2:rgba(246,245,242,.97);
   --shadow:0 1px 2px rgba(25,24,23,.06),0 10px 30px rgba(25,24,23,.08);
   --shadow-lg:0 2px 4px rgba(25,24,23,.08),0 16px 44px rgba(25,24,23,.14)}
 [data-theme=dark]{color-scheme:dark;
@@ -69,7 +69,7 @@ const css = `
   --line:#2e2b27;--line2:#413d37;--card:#1c1a18;
   --accent:#e0a35f;--accent-fg:#e8b478;--accent-soft:rgba(224,163,95,.12);
   --green:#4cc98a;--green-soft:rgba(76,201,138,.12);
-  --glass:rgba(28,26,24,.55);
+  --glass:rgba(28,26,24,.55);--glass2:rgba(24,22,20,.97);
   --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
   --shadow-lg:0 2px 4px rgba(0,0,0,.5),0 16px 44px rgba(0,0,0,.55)}
 *{margin:0;box-sizing:border-box}
@@ -104,7 +104,7 @@ a{color:inherit;text-decoration:none}
 @media(max-width:640px){
   .menu{display:none;position:absolute;top:calc(100% + .5rem);left:0;right:0;flex-direction:column;
     align-items:stretch;gap:.15rem;padding:.5rem;border:1px solid var(--line);border-radius:14px;
-    background:var(--glass);backdrop-filter:blur(14px) saturate(1.6);-webkit-backdrop-filter:blur(14px) saturate(1.6);
+    background:var(--glass2);backdrop-filter:blur(14px) saturate(1.6);-webkit-backdrop-filter:blur(14px) saturate(1.6);
     box-shadow:var(--shadow-lg)}
   .top.open .menu{display:flex}
   .toggle{margin-left:auto}
