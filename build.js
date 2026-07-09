@@ -47,7 +47,9 @@ const icons = {
   check: svg('<path d="M20 6L9 17l-5-5"/>'),
   arrowLeft: svg('<path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>'),
   mic: svg('<path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 11a7 7 0 0 1-14 0"/><path d="M12 18v4"/>'),
+  menu: svg('<path d="M3 6h18"/><path d="M3 12h18"/><path d="M3 18h18"/>', ' width="18" height="18"'),
   user: svg('<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'),
+  starPath: '<path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14l-5-4.87 6.91-1.01z"/>',
   sun: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>',
   moon: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
 };
@@ -59,6 +61,7 @@ const css = `
   --line:#dcd8d0;--line2:#cbc6bc;--card:#ffffff;
   --accent:#a05a1c;--accent-fg:#8a4b12;--accent-soft:rgba(160,90,28,.1);
   --green:#1a7f4b;--green-soft:rgba(26,127,75,.1);
+  --glass:rgba(255,255,255,.6);
   --shadow:0 1px 2px rgba(25,24,23,.06),0 10px 30px rgba(25,24,23,.08);
   --shadow-lg:0 2px 4px rgba(25,24,23,.08),0 16px 44px rgba(25,24,23,.14)}
 [data-theme=dark]{color-scheme:dark;
@@ -66,6 +69,7 @@ const css = `
   --line:#2e2b27;--line2:#413d37;--card:#1c1a18;
   --accent:#e0a35f;--accent-fg:#e8b478;--accent-soft:rgba(224,163,95,.12);
   --green:#4cc98a;--green-soft:rgba(76,201,138,.12);
+  --glass:rgba(28,26,24,.55);
   --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
   --shadow-lg:0 2px 4px rgba(0,0,0,.5),0 16px 44px rgba(0,0,0,.55)}
 *{margin:0;box-sizing:border-box}
@@ -78,17 +82,34 @@ body{background:var(--bg);color:var(--fg);
 a{color:inherit;text-decoration:none}
 .ic{flex:none;vertical-align:-2px}
 
-/* top bar */
-.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3.2rem}
+/* glass nav bar */
+.top{position:sticky;top:.8rem;z-index:20;display:flex;align-items:center;gap:.6rem;margin-bottom:3.2rem;
+  padding:.55rem .8rem;border:1px solid var(--line);border-radius:14px;
+  background:var(--glass);backdrop-filter:blur(14px) saturate(1.6);-webkit-backdrop-filter:blur(14px) saturate(1.6);
+  box-shadow:var(--shadow)}
 .brand{display:inline-flex;align-items:center;gap:.55rem;font-weight:700;letter-spacing:-.01em;color:var(--fg)}
 .brand .ic{color:var(--accent);width:18px;height:18px}
-.toggle{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;
+.menu{display:flex;align-items:center;gap:.15rem;margin-left:auto}
+.menu a{font-size:.86rem;font-weight:600;color:var(--fg2);padding:.35rem .75rem;border-radius:9px;
+  transition:color .15s,background .15s}
+.menu a:hover{color:var(--accent-fg);background:var(--accent-soft)}
+.toggle,.burger{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;flex:none;
   border:1px solid var(--line2);border-radius:10px;background:var(--card);color:var(--fg2);
   cursor:pointer;transition:border-color .15s,color .15s,transform .15s,box-shadow .15s}
-.toggle:hover{color:var(--accent-fg);border-color:var(--accent);transform:translateY(-1px);box-shadow:var(--shadow)}
-.toggle svg{display:block}
+.toggle:hover,.burger:hover{color:var(--accent-fg);border-color:var(--accent);transform:translateY(-1px);box-shadow:var(--shadow)}
+.toggle svg,.burger svg{display:block}
+.burger{display:none}
 [data-theme=dark] .toggle .sun{display:none}
 :root:not([data-theme=dark]) .toggle .moon{display:none}
+@media(max-width:640px){
+  .menu{display:none;position:absolute;top:calc(100% + .5rem);left:0;right:0;flex-direction:column;
+    align-items:stretch;gap:.15rem;padding:.5rem;border:1px solid var(--line);border-radius:14px;
+    background:var(--glass);backdrop-filter:blur(14px) saturate(1.6);-webkit-backdrop-filter:blur(14px) saturate(1.6);
+    box-shadow:var(--shadow-lg)}
+  .top.open .menu{display:flex}
+  .toggle{margin-left:auto}
+  .burger{display:inline-flex}
+}
 
 /* index header */
 .eyebrow{display:inline-flex;align-items:center;gap:.5rem;font-size:.74rem;font-weight:700;
@@ -103,6 +124,7 @@ h1.site{font-size:clamp(2.4rem,6vw,3.4rem);font-weight:800;letter-spacing:-.035e
 .stat b{color:var(--fg);font-weight:800}
 
 /* sections + cards */
+.section,#read{scroll-margin-top:5.2rem}
 .section{margin-top:3rem}
 .section h2{display:flex;align-items:baseline;gap:.7rem;font-size:1.05rem;font-weight:800;
   letter-spacing:-.01em;padding-bottom:.75rem;border-bottom:2px solid var(--line);margin-bottom:1.4rem}
@@ -128,6 +150,9 @@ h1.site{font-size:clamp(2.4rem,6vw,3.4rem);font-weight:800;letter-spacing:-.035e
 .badge.reading{color:var(--green);border-color:transparent;background:var(--green-soft)}
 .badge.reading .dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s ease-in-out infinite}
 .badge.done{color:var(--accent-fg);border-color:transparent;background:var(--accent-soft)}
+.badge.want{color:var(--muted)}
+.stars{display:flex;gap:.15rem;margin-top:.6rem;color:var(--accent)}
+.stars .off{color:var(--line2)}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
@@ -169,12 +194,20 @@ if(!t)t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
 document.documentElement.setAttribute('data-theme',t)})();</script>`;
 const toggleScript = `<script>document.querySelector('.toggle').addEventListener('click',function(){
 var r=document.documentElement,t=r.getAttribute('data-theme')==='dark'?'light':'dark';
-r.setAttribute('data-theme',t);try{localStorage.setItem('theme',t)}catch(e){}});</script>`;
+r.setAttribute('data-theme',t);try{localStorage.setItem('theme',t)}catch(e){}});
+(function(){var n=document.querySelector('.top');
+document.querySelector('.burger').addEventListener('click',function(){n.classList.toggle('open')});
+n.querySelectorAll('.menu a').forEach(function(a){a.addEventListener('click',function(){n.classList.remove('open')})});})();</script>`;
 
-const topbar = home => `<div class="top">
+const topbar = () => `<div class="top">
 <a class="brand" href="index.html">${icons.book}<span>Shelf</span></a>
+<nav class="menu" aria-label="Sections">
+<a href="index.html#reading">Reading</a>
+<a href="index.html#read">Read</a>
+<a href="index.html#want">Want to Read</a></nav>
 <button class="toggle" type="button" aria-label="Toggle light or dark theme" title="Toggle theme">
-<span class="sun">${icons.sun}</span><span class="moon">${icons.moon}</span></button></div>`;
+<span class="sun">${icons.sun}</span><span class="moon">${icons.moon}</span></button>
+<button class="burger" type="button" aria-label="Toggle menu" title="Menu">${icons.menu}</button></div>`;
 
 const page = (title, body) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -186,15 +219,25 @@ ${toggleScript}</body></html>`;
 const badge = b => `<div class="badges">
 ${b.status === 'reading'
     ? `<span class="badge reading"><span class="dot"></span>Reading</span>`
-    : `<span class="badge done">${icons.check}Read</span>`}
+    : b.status === 'want-to-read'
+      ? `<span class="badge want">${icons.bookmark}Want to read</span>`
+      : `<span class="badge done">${icons.check}Read</span>`}
 <span class="badge">${b.meta.format === 'audiobook' ? `${icons.headphones}Audiobook` : `${icons.book}Physical`}</span></div>`;
+
+const star = on => `<svg class="ic${on ? '' : ' off'}" viewBox="0 0 24 24" width="14" height="14" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">${icons.starPath}</svg>`;
+// Star rating (stars: 1-5 in frontmatter) — shown only on finished books.
+const stars = b => {
+  const n = Math.min(5, Math.round(+b.meta.stars));
+  if (b.status !== 'read' || !(n > 0)) return '';
+  return `<div class="stars" role="img" aria-label="${n} out of 5 stars">${[1, 2, 3, 4, 5].map(i => star(i <= n)).join('')}</div>`;
+};
 
 function card(b) {
   return `<a class="card" href="${b.slug}.html">
 <div class="t">${esc(b.meta.title)}</div>
 ${b.meta.subtitle ? `<div class="st">${esc(b.meta.subtitle)}</div>` : ''}
 <div class="a">${icons.user}${esc(b.meta.author || '')}${b.meta.narrator ? ` · read by ${esc(b.meta.narrator)}` : ''}</div>
-${badge(b)}</a>`;
+${stars(b)}${badge(b)}</a>`;
 }
 
 function bookPage(b) {
@@ -203,13 +246,16 @@ function bookPage(b) {
     [icons.user, 'Author', m.author],
     [m.format === 'audiobook' ? icons.headphones : icons.book, 'Format', m.format === 'audiobook' ? 'Audiobook' : 'Physical book'],
     [icons.mic, 'Narrated by', m.narrator],
-    [b.status === 'reading' ? icons.bookmark : icons.check, 'Status', b.status === 'reading' ? 'Currently reading' : (m.date ? `Read in ${m.date}` : 'Read')],
+    [b.status === 'read' ? icons.check : icons.bookmark, 'Status',
+      b.status === 'reading' ? 'Currently reading'
+        : b.status === 'want-to-read' ? 'Want to read'
+          : (m.date ? `Read in ${m.date}` : 'Read')],
   ].filter(r => r[2]).map(([ic, k, v]) => `<span class="chip">${ic}<span>${k} <b>${esc(v)}</b></span></span>`).join('');
   const thoughts = b.body.trim()
     ? `<div class="thoughts">${md(b.body)}</div>`
     : `<p class="empty">No thoughts written yet.</p>`;
   return page(`${m.title} · Shelf`, `<a class="back" href="index.html">${icons.arrowLeft}All books</a>
-<div class="book"><span class="eyebrow">${b.status === 'reading' ? 'Currently reading' : 'Finished'}</span>
+<div class="book"><span class="eyebrow">${b.status === 'reading' ? 'Currently reading' : b.status === 'want-to-read' ? 'Want to read' : 'Finished'}</span>
 <h1>${esc(m.title)}</h1>
 ${m.subtitle ? `<div class="sub">${esc(m.subtitle)}</div>` : ''}
 <div class="meta">${chips}</div>
@@ -227,12 +273,13 @@ fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
 fs.copyFileSync(path.join(__dirname, 'favicon.svg'), path.join(OUT, 'favicon.svg'));
 
-const section = (label, list) => list.length ? `<div class="section">
+const section = (label, list, id) => list.length ? `<div class="section"${id ? ` id="${id}"` : ''}>
 <h2><span>${label}</span><span class="n">${list.length}</span></h2>
 <div class="grid">${list.map(card).join('\n')}</div></div>` : '';
 
 const reading = books.filter(b => b.status === 'reading');
-const read = books.filter(b => b.status !== 'reading');
+const want = books.filter(b => b.status === 'want-to-read');
+const read = books.filter(b => b.status !== 'reading' && b.status !== 'want-to-read');
 
 // Group finished books by year read (date: 2026 — or comma-separated for re-reads: 2026, 2023).
 const byYear = new Map();
@@ -254,9 +301,10 @@ fs.writeFileSync(path.join(OUT, 'index.html'), page('Shelf · Reading Journal',
 <div class="stats">
 <span class="stat">${icons.bookmark}<b>${reading.length}</b> in progress</span>
 <span class="stat">${icons.check}<b>${read.length}</b> finished</span>
-<span class="stat">${icons.headphones}<b>${books.filter(b => b.meta.format === 'audiobook').length}</b> audiobooks</span>
+<span class="stat">${icons.headphones}<b>${books.filter(b => b.status !== 'want-to-read' && b.meta.format === 'audiobook').length}</b> audiobooks</span>
+<span class="stat">${icons.book}<b>${want.length}</b> want to read</span>
 </div>
-${section('Currently Reading', reading)}${yearSections}`));
+${section('Currently Reading', reading, 'reading')}<div id="read">${yearSections}</div>${section('Want to Read', want, 'want')}`));
 
 for (const b of books) fs.writeFileSync(path.join(OUT, `${b.slug}.html`), bookPage(b));
 console.log(`Built ${books.length} books -> dist/`);
