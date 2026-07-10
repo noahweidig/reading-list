@@ -26,6 +26,7 @@ function fetchGithubName(login) {
       headers: { 'User-Agent': 'reading-list-build-script' },
       timeout: 5000,
     }, res => {
+      if (res.statusCode !== 200) { res.resume(); resolve(null); return; }
       let data = '';
       res.on('data', c => (data += c));
       res.on('end', () => {
@@ -55,15 +56,21 @@ let SHELF_NAME = 'My Shelf';
 
 // --- tiny frontmatter + markdown ---
 function parse(raw) {
+  raw = raw.replace(/\r\n?/g, '\n'); // tolerate CRLF files
   const m = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
   const meta = {};
   if (m) for (const line of m[1].split('\n')) {
     const i = line.indexOf(':');
-    if (i > 0) meta[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+    if (i > 0) {
+      let v = line.slice(i + 1).trim();
+      // strip optional surrounding quotes ("Title: Sub" style values)
+      if (v.length > 1 && ((v[0] === '"' && v.endsWith('"')) || (v[0] === "'" && v.endsWith("'")))) v = v.slice(1, -1);
+      meta[line.slice(0, i).trim().toLowerCase()] = v;
+    }
   }
   return { meta, body: m ? m[2] : raw };
 }
-const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 function md(src) {
   const inline = s => esc(s)
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -166,6 +173,12 @@ a{color:inherit;text-decoration:none}
 .eyebrow::before{content:"";width:22px;height:2px;background:var(--accent);border-radius:2px}
 h1.site{font-size:clamp(2.4rem,6vw,3.4rem);font-weight:800;letter-spacing:-.035em;line-height:1.05;margin:.7rem 0 .8rem}
 .tagline{color:var(--fg2);font-size:1.08rem;max-width:34rem;margin-bottom:1.6rem}
+.search{max-width:30rem;margin-bottom:1.1rem}
+.search input{width:100%;padding:.62rem 1rem;font:inherit;font-size:.95rem;color:var(--fg);
+  background:var(--card);border:1px solid var(--line);border-radius:12px;outline:none;
+  transition:border-color .15s,box-shadow .15s}
+.search input::placeholder{color:var(--muted)}
+.search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .stats{display:flex;flex-wrap:wrap;gap:.6rem;margin-bottom:3.6rem}
 .stat{display:inline-flex;align-items:center;gap:.5rem;font-size:.82rem;font-weight:600;color:var(--fg2);
   background:var(--card);border:1px solid var(--line);border-radius:99px;padding:.38rem .85rem}
@@ -258,12 +271,25 @@ const topbar = () => `<div class="top">
 <span class="sun">${icons.sun}</span><span class="moon">${icons.moon}</span></button>
 <button class="burger" type="button" aria-label="Toggle menu" title="Menu">${icons.menu}</button></div>`;
 
-const page = (title, body) => `<!doctype html>
+// Client-side search: filters cards by title/subtitle/author/narrator, hides
+// emptied sections, and shows a "no matches" note when nothing is left.
+const searchScript = `<script>(function(){var q=document.getElementById('q');if(!q)return;
+var cards=[].slice.call(document.querySelectorAll('.card')),
+secs=[].slice.call(document.querySelectorAll('.section')),
+none=document.getElementById('noresults');
+q.addEventListener('input',function(){var v=q.value.trim().toLowerCase(),n=0;
+cards.forEach(function(c){var hit=!v||(c.getAttribute('data-search')||'').indexOf(v)>-1;
+c.style.display=hit?'':'none';if(hit)n++;});
+secs.forEach(function(s){var any=[].slice.call(s.querySelectorAll('.card')).some(function(c){return c.style.display!=='none'});
+s.style.display=any?'':'none';});
+if(none)none.hidden=!v||n>0;});})();</script>`;
+
+const page = (title, body, extraScript = '') => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title><link rel="icon" href="favicon.svg" type="image/svg+xml">${themeScript}<style>${css}</style></head>
 <body><div class="wrap">${topbar()}${body}
 <footer><span>Built from markdown, one file per book</span><span>${SHELF_NAME}</span></footer></div>
-${toggleScript}</body></html>`;
+${toggleScript}${extraScript}</body></html>`;
 
 const badge = b => `<div class="badges">
 ${b.status === 'reading'
@@ -275,14 +301,18 @@ ${b.status === 'reading'
 
 const star = on => `<svg class="ic${on ? '' : ' off'}" viewBox="0 0 24 24" width="14" height="14" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">${icons.starPath}</svg>`;
 // Star rating (stars: 1-5 in frontmatter) — shown only on finished books.
+// Non-numeric or out-of-range values render nothing rather than breaking the page.
 const stars = b => {
-  const n = Math.min(5, Math.round(+b.meta.stars));
-  if (b.status !== 'read' || !(n > 0)) return '';
+  const n = Math.max(0, Math.min(5, Math.round(+b.meta.stars) || 0));
+  if (b.status !== 'read' || n < 1) return '';
   return `<div class="stars" role="img" aria-label="${n} out of 5 stars">${[1, 2, 3, 4, 5].map(i => star(i <= n)).join('')}</div>`;
 };
 
+const searchText = m => esc([m.title, m.subtitle, m.author, m.narrator]
+  .filter(Boolean).join(' ').toLowerCase());
+
 function card(b) {
-  return `<a class="card" href="${b.slug}.html">
+  return `<a class="card" href="${encodeURIComponent(b.slug)}.html" data-search="${searchText(b.meta)}">
 <div class="t">${esc(b.meta.title)}</div>
 ${b.meta.subtitle ? `<div class="st">${esc(b.meta.subtitle)}</div>` : ''}
 <div class="a">${icons.user}${esc(b.meta.author || '')}${b.meta.narrator ? ` · read by ${esc(b.meta.narrator)}` : ''}</div>
@@ -307,23 +337,48 @@ function bookPage(b) {
 <div class="book"><span class="eyebrow">${b.status === 'reading' ? 'Currently reading' : b.status === 'want-to-read' ? 'Want to read' : 'Finished'}</span>
 <h1>${esc(m.title)}</h1>
 ${m.subtitle ? `<div class="sub">${esc(m.subtitle)}</div>` : ''}
+${stars(b)}
 <div class="meta">${chips}</div>
 ${thoughts}</div>`);
 }
 
 // --- build ---
+const STATUSES = new Set(['read', 'reading', 'want-to-read']);
+
 async function main() {
   SHELF_NAME = await resolveShelfName();
 
-  const books = fs.readdirSync(SRC).filter(f => f.endsWith('.md')).map(f => {
-    const { meta, body } = parse(fs.readFileSync(path.join(SRC, f), 'utf8'));
-    const status = (meta.status || 'read').toLowerCase();
-    return { slug: f.replace(/\.md$/, ''), meta, body, status };
-  }).sort((a, b) => a.meta.title.localeCompare(b.meta.title));
+  if (!fs.existsSync(SRC)) {
+    console.error(`Error: source directory not found: ${SRC}`);
+    process.exit(1);
+  }
+
+  const books = [];
+  for (const f of fs.readdirSync(SRC).filter(f => f.endsWith('.md')).sort()) {
+    try {
+      const { meta, body } = parse(fs.readFileSync(path.join(SRC, f), 'utf8'));
+      const slug = f.replace(/\.md$/, '');
+      if (!meta.title) {
+        // Fall back to a title derived from the filename instead of dying.
+        meta.title = slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        console.warn(`Warning: ${f} has no title; using "${meta.title}"`);
+      }
+      let status = (meta.status || 'read').toLowerCase();
+      if (!STATUSES.has(status)) {
+        console.warn(`Warning: ${f} has unknown status "${status}"; treating as "read"`);
+        status = 'read';
+      }
+      books.push({ slug, meta, body, status });
+    } catch (e) {
+      console.warn(`Warning: skipping ${f}: ${e.message}`);
+    }
+  }
+  books.sort((a, b) => a.meta.title.localeCompare(b.meta.title));
 
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(OUT, { recursive: true });
-  fs.copyFileSync(path.join(__dirname, 'favicon.svg'), path.join(OUT, 'favicon.svg'));
+  const favicon = path.join(__dirname, 'favicon.svg');
+  if (fs.existsSync(favicon)) fs.copyFileSync(favicon, path.join(OUT, 'favicon.svg'));
 
   const section = (label, list, id) => list.length ? `<div class="section"${id ? ` id="${id}"` : ''}>
 <h2><span>${label}</span><span class="n">${list.length}</span></h2>
@@ -350,16 +405,18 @@ async function main() {
   fs.writeFileSync(path.join(OUT, 'index.html'), page(`${SHELF_NAME} · Reading Journal`,
     `<span class="eyebrow">A reading journal</span><h1 class="site">${SHELF_NAME}</h1>
 <p class="tagline">Books I&rsquo;m reading, books I&rsquo;ve finished, and what I thought of them.</p>
+<div class="search"><input id="q" type="search" placeholder="Search by title, author, or narrator&hellip;" aria-label="Search books" autocomplete="off"></div>
 <div class="stats">
 <span class="stat">${icons.bookmark}<b>${reading.length}</b> in progress</span>
 <span class="stat">${icons.check}<b>${read.length}</b> finished</span>
 <span class="stat">${icons.headphones}<b>${books.filter(b => b.status !== 'want-to-read' && b.meta.format === 'audiobook').length}</b> audiobooks</span>
 <span class="stat">${icons.book}<b>${want.length}</b> want to read</span>
 </div>
-${section('Currently Reading', reading, 'reading')}<div id="read">${yearSections}</div>${section('Want to Read', want, 'want')}`));
+${section('Currently Reading', reading, 'reading')}<div id="read">${yearSections}</div>${section('Want to Read', want, 'want')}
+<p class="empty" id="noresults" hidden>No books match your search.</p>`, searchScript));
 
   for (const b of books) fs.writeFileSync(path.join(OUT, `${b.slug}.html`), bookPage(b));
   console.log(`Built ${books.length} books -> dist/`);
 }
 
-main();
+main().catch(e => { console.error(e); process.exit(1); });
