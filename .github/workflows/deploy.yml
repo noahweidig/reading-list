@@ -23,6 +23,8 @@ jobs:
         with:
           node-version: 22
       - run: node build.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
