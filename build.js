@@ -10,6 +10,8 @@ const SRC = path.join(__dirname, 'books'), OUT = path.join(__dirname, 'dist');
 // forker's name without any manual edits. Falls back gracefully if the git
 // remote isn't a GitHub URL or the API call fails (e.g. no network access).
 function getGithubLogin() {
+  // In GitHub Actions the owner is provided directly; no git parsing needed.
+  if (process.env.GITHUB_REPOSITORY_OWNER) return process.env.GITHUB_REPOSITORY_OWNER;
   try {
     const url = execSync('git config --get remote.origin.url', { cwd: __dirname }).toString().trim();
     const m = url.match(/github\.com[:/]([^/]+)\/[^/]+?(?:\.git)?$/);
@@ -23,7 +25,15 @@ function fetchGithubName(login) {
     const req = https.get({
       hostname: 'api.github.com',
       path: `/users/${encodeURIComponent(login)}`,
-      headers: { 'User-Agent': 'reading-list-build-script' },
+      headers: {
+        'User-Agent': 'reading-list-build-script',
+        // Unauthenticated requests are rate-limited on shared CI runners
+        // (which made the build fall back to the capitalized login), so
+        // authenticate with the workflow token when one is available.
+        ...(process.env.GITHUB_TOKEN
+          ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` }
+          : {}),
+      },
       timeout: 5000,
     }, res => {
       if (res.statusCode !== 200) { res.resume(); resolve(null); return; }
