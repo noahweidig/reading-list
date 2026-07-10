@@ -1,8 +1,57 @@
 #!/usr/bin/env node
 // Zero-dependency static site generator: books/*.md -> dist/
 const fs = require('fs'), path = require('path');
+const { execSync } = require('child_process');
+const https = require('https');
 
 const SRC = path.join(__dirname, 'books'), OUT = path.join(__dirname, 'dist');
+
+// Derive "<Name>'s Shelf" from the repo's GitHub owner, so a fork shows the
+// forker's name without any manual edits. Falls back gracefully if the git
+// remote isn't a GitHub URL or the API call fails (e.g. no network access).
+function getGithubLogin() {
+  try {
+    const url = execSync('git config --get remote.origin.url', { cwd: __dirname }).toString().trim();
+    const m = url.match(/github\.com[:/]([^/]+)\/[^/]+?(?:\.git)?$/);
+    return m ? m[1] : null;
+  } catch {
+    return null;
+  }
+}
+function fetchGithubName(login) {
+  return new Promise(resolve => {
+    const req = https.get({
+      hostname: 'api.github.com',
+      path: `/users/${encodeURIComponent(login)}`,
+      headers: { 'User-Agent': 'reading-list-build-script' },
+      timeout: 5000,
+    }, res => {
+      let data = '';
+      res.on('data', c => (data += c));
+      res.on('end', () => {
+        try {
+          const name = JSON.parse(data).name;
+          resolve(typeof name === 'string' && name.trim() ? name.trim() : null);
+        } catch {
+          resolve(null);
+        }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+  });
+}
+async function resolveShelfName() {
+  const login = getGithubLogin();
+  const fullName = login ? await fetchGithubName(login) : null;
+  const firstName = fullName
+    ? fullName.split(/\s+/)[0]
+    : login
+      ? login[0].toUpperCase() + login.slice(1)
+      : null;
+  return firstName ? `${firstName}'s Shelf` : 'My Shelf';
+}
+let SHELF_NAME = 'My Shelf';
 
 // --- tiny frontmatter + markdown ---
 function parse(raw) {
@@ -200,7 +249,7 @@ document.querySelector('.burger').addEventListener('click',function(){n.classLis
 n.querySelectorAll('.menu a').forEach(function(a){a.addEventListener('click',function(){n.classList.remove('open')})});})();</script>`;
 
 const topbar = () => `<div class="top">
-<a class="brand" href="index.html">${icons.book}<span>Noah's Shelf</span></a>
+<a class="brand" href="index.html">${icons.book}<span>${SHELF_NAME}</span></a>
 <nav class="menu" aria-label="Sections">
 <a href="index.html#reading">Reading</a>
 <a href="index.html#read">Read</a>
@@ -213,7 +262,7 @@ const page = (title, body) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title><link rel="icon" href="favicon.svg" type="image/svg+xml">${themeScript}<style>${css}</style></head>
 <body><div class="wrap">${topbar()}${body}
-<footer><span>Built from markdown, one file per book</span><span>Noah's Shelf</span></footer></div>
+<footer><span>Built from markdown, one file per book</span><span>${SHELF_NAME}</span></footer></div>
 ${toggleScript}</body></html>`;
 
 const badge = b => `<div class="badges">
@@ -254,7 +303,7 @@ function bookPage(b) {
   const thoughts = b.body.trim()
     ? `<div class="thoughts">${md(b.body)}</div>`
     : `<p class="empty">No thoughts written yet.</p>`;
-  return page(`${m.title} · Noah's Shelf`, `<a class="back" href="index.html">${icons.arrowLeft}All books</a>
+  return page(`${m.title} · ${SHELF_NAME}`, `<a class="back" href="index.html">${icons.arrowLeft}All books</a>
 <div class="book"><span class="eyebrow">${b.status === 'reading' ? 'Currently reading' : b.status === 'want-to-read' ? 'Want to read' : 'Finished'}</span>
 <h1>${esc(m.title)}</h1>
 ${m.subtitle ? `<div class="sub">${esc(m.subtitle)}</div>` : ''}
@@ -263,40 +312,43 @@ ${thoughts}</div>`);
 }
 
 // --- build ---
-const books = fs.readdirSync(SRC).filter(f => f.endsWith('.md')).map(f => {
-  const { meta, body } = parse(fs.readFileSync(path.join(SRC, f), 'utf8'));
-  const status = (meta.status || 'read').toLowerCase();
-  return { slug: f.replace(/\.md$/, ''), meta, body, status };
-}).sort((a, b) => a.meta.title.localeCompare(b.meta.title));
+async function main() {
+  SHELF_NAME = await resolveShelfName();
 
-fs.rmSync(OUT, { recursive: true, force: true });
-fs.mkdirSync(OUT, { recursive: true });
-fs.copyFileSync(path.join(__dirname, 'favicon.svg'), path.join(OUT, 'favicon.svg'));
+  const books = fs.readdirSync(SRC).filter(f => f.endsWith('.md')).map(f => {
+    const { meta, body } = parse(fs.readFileSync(path.join(SRC, f), 'utf8'));
+    const status = (meta.status || 'read').toLowerCase();
+    return { slug: f.replace(/\.md$/, ''), meta, body, status };
+  }).sort((a, b) => a.meta.title.localeCompare(b.meta.title));
 
-const section = (label, list, id) => list.length ? `<div class="section"${id ? ` id="${id}"` : ''}>
+  fs.rmSync(OUT, { recursive: true, force: true });
+  fs.mkdirSync(OUT, { recursive: true });
+  fs.copyFileSync(path.join(__dirname, 'favicon.svg'), path.join(OUT, 'favicon.svg'));
+
+  const section = (label, list, id) => list.length ? `<div class="section"${id ? ` id="${id}"` : ''}>
 <h2><span>${label}</span><span class="n">${list.length}</span></h2>
 <div class="grid">${list.map(card).join('\n')}</div></div>` : '';
 
-const reading = books.filter(b => b.status === 'reading');
-const want = books.filter(b => b.status === 'want-to-read');
-const read = books.filter(b => b.status !== 'reading' && b.status !== 'want-to-read');
+  const reading = books.filter(b => b.status === 'reading');
+  const want = books.filter(b => b.status === 'want-to-read');
+  const read = books.filter(b => b.status !== 'reading' && b.status !== 'want-to-read');
 
-// Group finished books by year read (date: 2026 — or comma-separated for re-reads: 2026, 2023).
-const byYear = new Map();
-for (const b of read) {
-  const years = (b.meta.date || '').split(',').map(s => s.trim()).filter(Boolean);
-  for (const y of years.length ? years : ['Earlier']) {
-    if (!byYear.has(y)) byYear.set(y, []);
-    byYear.get(y).push(b);
+  // Group finished books by year read (date: 2026 — or comma-separated for re-reads: 2026, 2023).
+  const byYear = new Map();
+  for (const b of read) {
+    const years = (b.meta.date || '').split(',').map(s => s.trim()).filter(Boolean);
+    for (const y of years.length ? years : ['Earlier']) {
+      if (!byYear.has(y)) byYear.set(y, []);
+      byYear.get(y).push(b);
+    }
   }
-}
-const yearSections = [...byYear.keys()]
-  .sort((a, b) => a === 'Earlier' ? 1 : b === 'Earlier' ? -1 : Number(b) - Number(a))
-  .map(y => section(y === 'Earlier' ? 'Read' : `Read in ${y}`, byYear.get(y)))
-  .join('');
+  const yearSections = [...byYear.keys()]
+    .sort((a, b) => a === 'Earlier' ? 1 : b === 'Earlier' ? -1 : Number(b) - Number(a))
+    .map(y => section(y === 'Earlier' ? 'Read' : `Read in ${y}`, byYear.get(y)))
+    .join('');
 
-fs.writeFileSync(path.join(OUT, 'index.html'), page('Noah's Shelf · Reading Journal',
-  `<span class="eyebrow">A reading journal</span><h1 class="site">Noah's Shelf</h1>
+  fs.writeFileSync(path.join(OUT, 'index.html'), page(`${SHELF_NAME} · Reading Journal`,
+    `<span class="eyebrow">A reading journal</span><h1 class="site">${SHELF_NAME}</h1>
 <p class="tagline">Books I&rsquo;m reading, books I&rsquo;ve finished, and what I thought of them.</p>
 <div class="stats">
 <span class="stat">${icons.bookmark}<b>${reading.length}</b> in progress</span>
@@ -306,5 +358,8 @@ fs.writeFileSync(path.join(OUT, 'index.html'), page('Noah's Shelf · Reading Jou
 </div>
 ${section('Currently Reading', reading, 'reading')}<div id="read">${yearSections}</div>${section('Want to Read', want, 'want')}`));
 
-for (const b of books) fs.writeFileSync(path.join(OUT, `${b.slug}.html`), bookPage(b));
-console.log(`Built ${books.length} books -> dist/`);
+  for (const b of books) fs.writeFileSync(path.join(OUT, `${b.slug}.html`), bookPage(b));
+  console.log(`Built ${books.length} books -> dist/`);
+}
+
+main();
