@@ -200,7 +200,7 @@ document.querySelector('.burger').addEventListener('click',function(){n.classLis
 n.querySelectorAll('.menu a').forEach(function(a){a.addEventListener('click',function(){n.classList.remove('open')})});})();</script>`;
 
 const topbar = () => `<div class="top">
-<a class="brand" href="index.html">${icons.book}<span>Shelf</span></a>
+<a class="brand" href="index.html">${icons.book}<span>Noah's Shelf</span></a>
 <nav class="menu" aria-label="Sections">
 <a href="index.html#reading">Reading</a>
 <a href="index.html#read">Read</a>
@@ -213,7 +213,7 @@ const page = (title, body) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title><link rel="icon" href="favicon.svg" type="image/svg+xml">${themeScript}<style>${css}</style></head>
 <body><div class="wrap">${topbar()}${body}
-<footer><span>Built from markdown, one file per book</span><span>Shelf</span></footer></div>
+<footer><span>Built from markdown, one file per book</span><span>Noah's Shelf</span></footer></div>
 ${toggleScript}</body></html>`;
 
 const badge = b => `<div class="badges">
@@ -254,7 +254,7 @@ function bookPage(b) {
   const thoughts = b.body.trim()
     ? `<div class="thoughts">${md(b.body)}</div>`
     : `<p class="empty">No thoughts written yet.</p>`;
-  return page(`${m.title} · Shelf`, `<a class="back" href="index.html">${icons.arrowLeft}All books</a>
+  return page(`${m.title} · Noah's Shelf`, `<a class="back" href="index.html">${icons.arrowLeft}All books</a>
 <div class="book"><span class="eyebrow">${b.status === 'reading' ? 'Currently reading' : b.status === 'want-to-read' ? 'Want to read' : 'Finished'}</span>
 <h1>${esc(m.title)}</h1>
 ${m.subtitle ? `<div class="sub">${esc(m.subtitle)}</div>` : ''}
@@ -295,8 +295,8 @@ const yearSections = [...byYear.keys()]
   .map(y => section(y === 'Earlier' ? 'Read' : `Read in ${y}`, byYear.get(y)))
   .join('');
 
-fs.writeFileSync(path.join(OUT, 'index.html'), page('Shelf · Reading Journal',
-  `<span class="eyebrow">A reading journal</span><h1 class="site">Shelf</h1>
+fs.writeFileSync(path.join(OUT, 'index.html'), page('Noah's Shelf · Reading Journal',
+  `<span class="eyebrow">A reading journal</span><h1 class="site">Noah's Shelf</h1>
 <p class="tagline">Books I&rsquo;m reading, books I&rsquo;ve finished, and what I thought of them.</p>
 <div class="stats">
 <span class="stat">${icons.bookmark}<b>${reading.length}</b> in progress</span>
