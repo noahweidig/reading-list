@@ -3,7 +3,7 @@ title: Mythos
 subtitle: The Greek Myths Reimagined
 author: Stephen Fry
 status: read
-stars:
+stars: 5
 format: audiobook
 narrator: Stephen Fry
 date: 2025
